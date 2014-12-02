@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, render_template, request
-from serialpoll import SensorData
 import json
+import Queue
 import random
 import serial
 import threading
@@ -16,13 +16,18 @@ def get_data():
 def index():
 	return render_template( 'index.html' )
 
-def serial_poll( s_dict ):
-	dev = serial_init()
-	s = SensorData( dev, s_dict, 0, 5 )
+def parse_data():
+	wait_for_start()
 	while True:
-		sensor_buffer = s.poll()
-		s.wait_for_end()
-		#print sensor_buffer
+		data = q.get()
+		data += (q.get()<<8)
+		q.get()
+		wait_for_start()
+
+def serial_poll():
+	while True:
+		data = ser_read()
+		q.put(data)
 
 def serial_init():
 	ser = serial.Serial()
@@ -32,16 +37,60 @@ def serial_init():
 
 	return ser
 
+def ser_read():
+	while True:
+		try:
+			data = ord(ser.read())
+			print data
+			break
+		except:
+			continue
+	return data
+
+def wait_for_end():
+	pad_len = 5
+	while True:
+		pad = q.get()
+		if pad == pad_len-1:
+			break
+
+def wait_for_start():
+	pad_start = 0
+	pad_len = 5
+	lst = []
+	while len(lst) != pad_len:
+		while q.empty(): continue
+		data = q.get()
+		if len(lst) == 0:
+			if data == 0: lst.append(data)
+		else:
+			if data == len(lst): lst.append(data)
+
+def foo( s ):
+	while True:
+		data = ser_read()
+		s['sensor1'].append(data)
+		s['sensor3'].append(data)
+		s['sensor2'].append(data/100.0)
+
 if __name__ == "__main__":
+	global q
 	global sensor_buffer
-	sensor_buffer = { 'sensor1': [] }
+	global ser
+	q = Queue.Queue()
+	sensor_buffer = { 'sensor1': [], 'sensor2': [], 'sensor3': [] }
+	ser = serial_init()
 	app.debug = True
 
-	serial_thread = threading.Thread( target=serial_poll, args=(sensor_buffer, ) )
-	serial_thread.daemon = True
-	serial_thread.start()
+	parse_thread = threading.Thread( target=foo, args=(sensor_buffer, ) )
+	#parse_thread = threading.Thread( target=parse_data, args=(sensor_buffer, ) )
+	#serial_thread = threading.Thread( target=serial_poll, args=( ) )
+	parse_thread.daemon = True
+	#serial_thread.daemon = True
+	parse_thread.start()
+	#serial_thread.start()
 	
-	app.run()
+	app.run(port=5015)
 
 	while True:
 		time.sleep( .1 )

@@ -31,6 +31,14 @@ void loop()
 	sendData.vars.data0 = (256);
 	//sendData.vars.data1 = (512);
 	//sendData.vars.data2 = (1024);
-	Serial.write(sendData.buffer, sizeof(sensorData));
-	delay(100);
+	//Serial.write(sendData.buffer, sizeof(sensorData));
+	for (char i = 0; i < 100; ++i) {
+		Serial.write(i);
+		delay(100);
+	}
+	for (char i = 100; i >= 0; --i) {
+		Serial.write(i);
+		delay(10);
+	}
+	//delay(100);
 }
