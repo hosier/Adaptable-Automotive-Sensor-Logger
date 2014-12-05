@@ -90,7 +90,7 @@ if __name__ == "__main__":
 	parse_thread.start()
 	#serial_thread.start()
 	
-	app.run(port=5015)
+	app.run(port=5001)
 
 	while True:
 		time.sleep( .1 )
